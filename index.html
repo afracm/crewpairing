@@ -6,80 +6,116 @@
     <title>Crew Pairing System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        .suggestion-active { @apply bg-blue-50; }
+        .suggestion-active { background-color: #f0f9ff; }
         .fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
+        [type="checkbox"] { 
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid #cbd5e1;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
     <div class="max-w-2xl mx-auto p-8 flex-1">
         <!-- Pairing Checker -->
-        <div class="bg-white rounded-xl shadow-md p-6">
-            <h2 class="text-xl font-bold mb-4">✈️ Crew Pairing Validator</h2>
-            <div class="space-y-4">
-                <!-- Captain Input -->
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">✈️ Crew Pairing Validator</h2>
+            <div class="space-y-5">
                 <div class="relative">
-                    <label class="block text-sm font-medium mb-1">Captain</label>
+                    <label class="block text-sm font-medium mb-2 text-gray-600">Captain</label>
                     <input type="text" 
                            id="captainInput"
-                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           class="w-full p-3.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-gray-400"
                            placeholder="Start typing captain code..."
                            autocomplete="off">
-                    <div id="captainSuggestions" class="suggestions-dropdown"></div>
+                    <div id="captainSuggestions" class="suggestions-dropdown absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg"></div>
                 </div>
 
-                <!-- First Officer Input -->
                 <div class="relative">
-                    <label class="block text-sm font-medium mb-1">First Officer</label>
+                    <label class="block text-sm font-medium mb-2 text-gray-600">First Officer</label>
                     <input type="text" 
                            id="firstOfficerInput"
-                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           class="w-full p-3.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-gray-400"
                            placeholder="Start typing FO code..."
                            autocomplete="off">
-                    <div id="foSuggestions" class="suggestions-dropdown"></div>
+                    <div id="foSuggestions" class="suggestions-dropdown absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg"></div>
                 </div>
 
-                <!-- Cabin Crew Input -->
                 <div class="relative">
-                    <label class="block text-sm font-medium mb-1">Cabin Crew</label>
+                    <label class="block text-sm font-medium mb-2 text-gray-600">Cabin Crew</label>
                     <input type="text" 
                            id="cabinCrewInput"
-                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           class="w-full p-3.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-gray-400"
                            placeholder="Start typing cabin crew code..."
                            autocomplete="off">
-                    <div id="ccSuggestions" class="suggestions-dropdown"></div>
+                    <div id="ccSuggestions" class="suggestions-dropdown absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg"></div>
                 </div>
             </div>
 
-            <div id="validationResult" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
-                <!-- Validation results will appear here -->
+            <div class="flex gap-4 mt-8">
+                <button onclick="validateAndShowResult()" 
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-lg transition-all font-medium">
+                    ✅ Check Crew Pairing
+                </button>
+                <button onclick="addToApprovalList()" 
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3.5 rounded-lg transition-all font-medium">
+                    📋 Add to Approval List
+                </button>
             </div>
 
-            <!-- Disclaimer -->
-            <div class="mt-4 text-sm text-gray-500 italic">
-                This pairing information is for reference purposes only. For accurate and up-to-date pairing details, please verify with the Dispatch or Crew Scheduler.
-            </div>
+            <div id="validationResult" class="mt-6 p-5 bg-gray-50 rounded-lg hidden border border-gray-100"></div>
+        </div>
 
-            <button onclick="validateCrew()" 
-                    class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg transition-colors">
-                Validate Crew Pairing
-            </button>
+        <!-- Pairing List -->
+        <div id="pairingListSection" class="mt-8 bg-white rounded-xl shadow-sm p-6 card-hover border border-gray-100">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl font-bold text-gray-800">📜 Pairing Approval List</h2>
+                <button onclick="toggleSelectAll()" 
+                        class="text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2 rounded-lg transition-colors font-medium">
+                    ☑️ Select All
+                </button>
+            </div>
+            <div id="pairingList" class="space-y-3"></div>
+            
+            <div class="flex gap-4 mt-6">
+                <button onclick="clearPairingList()" class="flex-1 text-sm bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg font-medium">
+                    🧹 Clear All
+                </button>
+                <button id="smsListButton" 
+                        class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 rounded-lg font-medium hidden"
+                        onclick="sendSMS()">
+                    📱 Send SMS
+                </button>
+                <button id="emailButton" 
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-lg font-medium hidden"
+                        onclick="sendEmail()">
+                    📧 Send Email
+                </button>
+                <button id="pdfButton" 
+                        class="flex-1 bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg font-medium hidden"
+                        onclick="exportPDF()">
+                    📄 Export PDF
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="text-center py-4 text-sm text-gray-600 border-t border-gray-200">
-        <p>2025 Cabin Crew Pairing Match Checker and Pairing Approval Submission Form</p>
-        <p>Developed by AFKA (C)</p>
+    <footer class="text-center py-4 text-sm text-gray-500 border-t border-gray-200">
+        <p>2025 Cabin Crew Pairing System | Developed by AFKA</p>
     </footer>
 
 <script>
 const SHEET_ID = '10FGDOvKfJdZfICtaPQ7hK16Lb8VqClFvqygtEJq7CUY';
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 let crewData = [];
+let pairingHistory = JSON.parse(localStorage.getItem('pairingHistory')) || [];
 
-// Load data from Google Sheets
 function loadCrewData() {
     Papa.parse(CSV_URL, {
         download: true,
@@ -87,7 +123,7 @@ function loadCrewData() {
         complete: (results) => {
             crewData = results.data.map(row => ({
                 code: row['Crew Code'],
-                role: row['Role'],
+                role: row['Role'] === 'CCI' ? 'Cabin Crew' : row['Role'],
                 seniority: row['Seniority']
             }));
             initializeAutocomplete();
@@ -95,14 +131,12 @@ function loadCrewData() {
     });
 }
 
-// Initialize autocomplete for all fields
 function initializeAutocomplete() {
     setupAutocomplete('captainInput', role => ['Captain', 'LTC'].includes(role));
     setupAutocomplete('firstOfficerInput', role => ['First Officer', 'LT'].includes(role));
     setupAutocomplete('cabinCrewInput', role => role === 'Cabin Crew');
 }
 
-// Configure autocomplete
 function setupAutocomplete(inputId, roleFilter) {
     const input = document.getElementById(inputId);
     const suggestions = document.getElementById(inputId + 'Suggestions');
@@ -115,10 +149,10 @@ function setupAutocomplete(inputId, roleFilter) {
         );
         
         suggestions.innerHTML = matches.map(member => `
-            <div class="p-3 hover:bg-gray-50 cursor-pointer border-b"
-                 onclick="selectCrew('${inputId}', '${member.code}', '${member.role}', '${member.seniority}')">
+            <div class="p-3 hover:bg-blue-50 cursor-pointer border-b transition-colors"
+                 onclick="selectCrew('${inputId}', '${member.code}')">
                 <div class="font-medium">${member.code}</div>
-                <div class="text-sm text-gray-500">${member.role} • ${member.seniority}</div>
+                <div class="text-sm text-gray-600">${member.role} • ${member.seniority}</div>
             </div>
         `).join('');
         
@@ -126,13 +160,12 @@ function setupAutocomplete(inputId, roleFilter) {
     });
 }
 
-// Handle crew selection
-function selectCrew(fieldId, code, role, seniority) {
+function selectCrew(fieldId, code) {
     document.getElementById(fieldId).value = code;
     document.getElementById(fieldId + 'Suggestions').classList.add('hidden');
+    validateAndShowResult();
 }
 
-// Validate crew pairing
 function validateCrew() {
     const getCrewMember = (fieldId, allowedRoles) => {
         const code = document.getElementById(fieldId).value.trim().toLowerCase();
@@ -146,183 +179,359 @@ function validateCrew() {
     const firstOfficer = getCrewMember('firstOfficerInput', ['First Officer', 'LT']);
     const cabinCrew = getCrewMember('cabinCrewInput', ['Cabin Crew']);
 
-    const resultDiv = document.getElementById('validationResult');
-    resultDiv.classList.remove('hidden');
-
-    if(!captain || !firstOfficer || !cabinCrew) {
-        resultDiv.innerHTML = `
-            <div class="text-red-600">
-                ❌ Invalid crew selection - please check all fields
-                <div class="mt-2 text-sm text-gray-600">
-                    Ensure you've selected valid crew codes for each role.
-                </div>
-            </div>
-        `;
-        return;
-    }
-
-    // Helper functions
-    const isSenior = m => m.seniority.toLowerCase() === 'senior';
-    const isJunior = m => m.seniority.toLowerCase() === 'junior';
-    const isTrainee = m => m.seniority.toLowerCase() === 'trainee';
-
     let status = '✅ Valid Crew Combination';
     let requirements = [];
     let needsApproval = false;
     let isInvalid = false;
 
-    // Rule 1: All Senior
-    if([captain, firstOfficer, cabinCrew].every(isSenior)) {
-        status = '✅ Valid: All crew members are Senior';
-    }
+    const isSenior = m => m?.seniority?.toLowerCase() === 'senior';
+    const isJunior = m => m?.seniority?.toLowerCase() === 'junior';
+    const isTrainee = m => m?.seniority?.toLowerCase() === 'trainee';
 
-    // Rule 2: All Junior
-    if([captain, firstOfficer, cabinCrew].every(isJunior)) {
-        status = '❌ Invalid: All crew members are Junior';
+    try {
+        if([captain, firstOfficer, cabinCrew].every(isSenior)) status = '✅ Valid: All Senior Crew';
+
+        if([captain, firstOfficer, cabinCrew].every(isJunior)) {
+            status = '❌ Invalid: All Junior Crew';
+            isInvalid = true;
+        }
+
+        if(captain && isJunior(captain)) {
+            requirements.push('Junior Captain');
+            if(!isSenior(firstOfficer)) {
+                status = '❌ Invalid: Junior Captain requires Senior FO';
+                isInvalid = true;
+            }
+            if(isJunior(cabinCrew)) {
+                requirements.push('Approval needed: Junior Cabin Crew');
+                needsApproval = true;
+            }
+        }
+
+        if(firstOfficer && isJunior(firstOfficer)) {
+            requirements.push('Junior First Officer');
+            if(!isSenior(captain)) {
+                status = '❌ Invalid: Junior FO requires Senior Captain';
+                isInvalid = true;
+            }
+            if(isJunior(cabinCrew)) {
+                requirements.push('Approval needed: Junior Cabin Crew');
+                needsApproval = true;
+            }
+        }
+
+        if(firstOfficer && isTrainee(firstOfficer)) {
+            requirements.push('Trainee FO');
+            if(captain?.role !== 'LTC') {
+                status = '❌ Invalid: Trainee FO requires LTC Captain';
+                isInvalid = true;
+            }
+            if(!isSenior(cabinCrew) && !isInvalid) {
+                requirements.push('Approval needed: Non-Senior CC');
+                needsApproval = true;
+            }
+        }
+
+        if(cabinCrew && isTrainee(cabinCrew)) {
+            requirements.push('Trainee Cabin Crew');
+            if(captain?.role !== 'LTC') {
+                status = '❌ Invalid: Trainee CC requires LTC Captain';
+                isInvalid = true;
+            }
+            if(isJunior(firstOfficer) && !isInvalid) {
+                requirements.push('Approval needed: Junior FO');
+                needsApproval = true;
+            }
+        }
+
+        if(captain && ['First Officer', 'LT'].includes(captain.role)) {
+            requirements.push('FO in Captain Column');
+            if(captain.role !== 'LTC' || !isSenior(cabinCrew)) {
+                status = '❌ Invalid: FO as Captain requires LTC + Senior CC';
+                isInvalid = true;
+            }
+        }
+
+        if(captain && !['Captain', 'LTC'].includes(captain.role)) {
+            requirements.push('Invalid Captain Role');
+            if(firstOfficer?.role !== 'LTC' || !isSenior(cabinCrew)) {
+                requirements.push('Approval needed: Non-LTC FO/Junior CC');
+                needsApproval = true;
+            }
+        }
+
+        if(firstOfficer?.role === 'LTC') {
+            requirements.push('LTC First Officer');
+            if(captain?.role !== 'First Officer') {
+                status = '❌ Invalid: LTC FO requires FO Captain';
+                isInvalid = true;
+            }
+        }
+
+        if(!isInvalid && needsApproval) status = '⚠️ Needs Approval';
+
+    } catch (error) {
+        console.error('Validation error:', error);
+        status = '❌ Validation Error - Check Inputs';
         isInvalid = true;
     }
 
-    // Rule 3: Junior Captain
-    if(isJunior(captain)) {
-        requirements.push('Junior Captain Detected');
-        if(!isSenior(firstOfficer)) {
-            status = '❌ Invalid: Junior Captain requires Senior First Officer';
-            isInvalid = true;
-        }
-        if(isJunior(cabinCrew)) {
-            requirements.push('Approval needed for Junior Cabin Crew');
-            needsApproval = true;
-        }
+    return {
+        isValid: !!captain && !!firstOfficer && !!cabinCrew,
+        isInvalid,
+        needsApproval,
+        status,
+        requirements,
+        captain,
+        firstOfficer,
+        cabinCrew
+    };
+}
+
+function validateAndShowResult() {
+    const result = validateCrew();
+    const resultDiv = document.getElementById('validationResult');
+    resultDiv.classList.remove('hidden');
+
+    if (!result.isValid) {
+        resultDiv.innerHTML = `
+            <div class="text-red-600">
+                ❌ Invalid crew selection
+                <div class="mt-2 text-sm">Please check all fields</div>
+            </div>
+        `;
+        return;
     }
 
-    // Rule 4: Junior First Officer
-    if(isJunior(firstOfficer)) {
-        requirements.push('Junior First Officer Detected');
-        if(!isSenior(captain)) {
-            status = '❌ Invalid: Junior FO requires Senior Captain';
-            isInvalid = true;
-        }
-        if(isJunior(cabinCrew)) {
-            requirements.push('Approval needed for Junior Cabin Crew');
-            needsApproval = true;
-        }
-    }
-
-    // Rule 5: Trainee First Officer
-    if(isTrainee(firstOfficer)) {
-        requirements.push('Trainee First Officer Detected');
-        if(captain.role !== 'LTC') {
-            status = '❌ Invalid: Trainee FO requires LTC Captain';
-            isInvalid = true;
-        }
-        if(!isSenior(cabinCrew) && !isInvalid) {
-            requirements.push('Approval needed for Non-Senior Cabin Crew');
-            needsApproval = true;
-        }
-    }
-
-    // Rule 6: Trainee Cabin Crew
-    if(isTrainee(cabinCrew)) {
-        requirements.push('Trainee Cabin Crew Detected');
-        if(captain.role !== 'LTC') {
-            status = '❌ Invalid: Trainee CC requires LTC Captain';
-            isInvalid = true;
-        }
-        if(isJunior(firstOfficer) && !isInvalid) {
-            requirements.push('Approval needed for Junior First Officer');
-            needsApproval = true;
-        }
-    }
-
-    // Rule 7: First Officer in Captain Column
-    if(['First Officer', 'LT'].includes(captain.role)) {
-        requirements.push('First Officer in Captain Column');
-        if(captain.role !== 'LTC' || !isSenior(cabinCrew)) {
-            status = '❌ Invalid: FO in Captain column requires LTC role and Senior CC';
-            isInvalid = true;
-        }
-    }
-
-    // Rule 8: Invalid Captain Role
-    if(!['Captain', 'LTC'].includes(captain.role)) {
-        requirements.push('Non-Captain in Captain Column');
-        if(firstOfficer.role !== 'LTC' || !isSenior(cabinCrew)) {
-            requirements.push('Approval needed for Non-LTC FO or Junior CC');
-            needsApproval = true;
-        }
-    }
-
-    // Rule 9: LTC First Officer
-    if(firstOfficer.role === 'LTC') {
-        requirements.push('LTC First Officer Detected');
-        if(captain.role !== 'First Officer') {
-            status = '❌ Invalid: LTC FO requires Captain to be First Officer';
-            isInvalid = true;
-        }
-    }
-
-    // Final status determination
-    if(!isInvalid && needsApproval) {
-        status = '⚠️ Needs Pairing Approval';
-    }
-
-    // Build requirements list
-    const requirementsList = requirements.length > 0 
-        ? `<div class="mt-4 p-3 bg-yellow-50 rounded-lg">
+    const requirementsList = result.requirements.length > 0 
+        ? `<div class="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
              <h4 class="font-semibold mb-2">Validation Details:</h4>
-             <ul class="list-disc pl-5">${requirements.map(r => `<li>${r}</li>`).join('')}</ul>
+             <ul class="list-disc pl-5">${result.requirements.map(r => `<li>${r}</li>`).join('')}</ul>
            </div>`
         : '';
 
-    // Build SMS approval
-    let approvalSection = '';
-    if(needsApproval && !isInvalid) {
-        const today = new Date().toLocaleDateString(); // Auto-insert today's date
-        const smsBody = encodeURIComponent(
-            `[${today}] Pairing Approval Needed:\n` +
-            `C: ${captain.code} (${captain.seniority})\n` +
-            `FO: ${firstOfficer.code} (${firstOfficer.seniority})\n` +
-            `CC: ${cabinCrew.code} (${cabinCrew.seniority})`
-        );
-        approvalSection = `
-            <div class="mt-4">
-                <a href="sms:?body=${smsBody}" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    📱 Send Approval Request
-                </a>
-            </div>
-        `;
-    }
+    const formattedDate = getFormattedDate();
+    const smsBody = encodeURIComponent(
+        `[${formattedDate}] Crew Pairing:\n` +
+        `C: ${result.captain.code} (${result.captain.seniority})\n` +
+        `FO: ${result.firstOfficer.code} (${result.firstOfficer.seniority})\n` +
+        `CC: ${result.cabinCrew.code} (${result.cabinCrew.seniority})`
+    );
+
+    const smsSection = result.needsApproval ? `
+        <div class="mt-4 flex gap-4">
+            <a href="sms:?body=${smsBody}" 
+               class="flex-1 text-center bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg">
+               📱 Send Approval SMS
+            </a>
+            <button onclick="addToApprovalList()" 
+                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg">
+                ➕ Add to List
+            </button>
+        </div>
+    ` : '';
 
     resultDiv.innerHTML = `
         <div class="space-y-2">
-            <div class="font-semibold text-lg ${isInvalid ? 'text-red-600' : needsApproval ? 'text-yellow-600' : 'text-green-600'}">
-                ${status}
+            <div class="font-semibold text-lg ${result.isInvalid ? 'text-red-600' : result.needsApproval ? 'text-yellow-600' : 'text-green-600'}">
+                ${result.status}
             </div>
             <div class="grid grid-cols-2 gap-4 mt-4">
-                ${crewMemberCard('Captain', captain)}
-                ${crewMemberCard('First Officer', firstOfficer)}
-                ${crewMemberCard('Cabin Crew', cabinCrew)}
+                ${crewMemberCard('Captain', result.captain)}
+                ${crewMemberCard('First Officer', result.firstOfficer)}
+                ${crewMemberCard('Cabin Crew', result.cabinCrew)}
             </div>
             ${requirementsList}
-            ${approvalSection}
+            ${smsSection}
         </div>
     `;
 }
 
-// Helper function to create crew member cards
 function crewMemberCard(title, member) {
     return `
-        <div class="p-3 bg-blue-50 rounded">
-            <div class="text-sm text-blue-600">${title}</div>
-            <div class="font-medium">${member.code}</div>
-            <div class="text-sm">${member.role} • ${member.seniority}</div>
+        <div class="p-3.5 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="text-sm text-blue-600 font-medium">${title}</div>
+            <div class="font-semibold text-gray-800 mt-1">${member.code}</div>
+            <div class="text-sm text-gray-600">${member.role} • ${member.seniority}</div>
         </div>
     `;
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', loadCrewData);
+function addToApprovalList() {
+    const result = validateCrew();
+    
+    if (!result.isValid) {
+        alert("Please complete all fields with valid crew codes");
+        return;
+    }
+    
+    if (result.isInvalid) {
+        alert("❌ Invalid pairing - Cannot add to approval list");
+        return;
+    }
+    
+    if (!result.needsApproval) {
+        alert("✅ Valid pairing - Approval not required");
+        return;
+    }
+
+    const pairing = {
+        captain: result.captain,
+        firstOfficer: result.firstOfficer,
+        cabinCrew: result.cabinCrew,
+        timestamp: new Date().toISOString(),
+        checked: true
+    };
+
+    pairingHistory.push(pairing);
+    localStorage.setItem('pairingHistory', JSON.stringify(pairingHistory));
+    updatePairingList();
+    clearInputs();
+}
+
+function updatePairingList() {
+    const pairingList = document.getElementById('pairingList');
+    pairingList.innerHTML = pairingHistory.map((pairing, index) => `
+        <div class="group relative p-3.5 rounded-lg mb-2 ${pairing.checked ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'}">
+            <div class="flex items-start gap-4">
+                <input type="checkbox" class="mt-2" data-index="${index}" ${pairing.checked ? 'checked' : ''}
+                       onchange="toggleCheckbox(${index})">
+                <div class="flex-1">
+                    <div class="font-medium text-gray-800">C: ${pairing.captain.code} 
+                        <span class="text-sm text-gray-600">(${pairing.captain.seniority})</span>
+                    </div>
+                    <div class="font-medium text-gray-800">FO: ${pairing.firstOfficer.code} 
+                        <span class="text-sm text-gray-600">(${pairing.firstOfficer.seniority})</span>
+                    </div>
+                    <div class="font-medium text-gray-800">CC: ${pairing.cabinCrew.code} 
+                        <span class="text-sm text-gray-600">(${pairing.cabinCrew.seniority})</span>
+                    </div>
+                </div>
+                <button onclick="removePairing(${index})" 
+                        class="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 transition-opacity">
+                    ×
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    const hasPairings = pairingHistory.length > 0;
+    document.getElementById('smsListButton').classList.toggle('hidden', !hasPairings);
+    document.getElementById('emailButton').classList.toggle('hidden', !hasPairings);
+    document.getElementById('pdfButton').classList.toggle('hidden', !hasPairings);
+    
+    const selectAllBtn = document.querySelector('#pairingListSection button');
+    const allChecked = pairingHistory.every(p => p.checked);
+    selectAllBtn.textContent = allChecked ? '❎ Deselect All' : '☑️ Select All';
+}
+
+function toggleCheckbox(index) {
+    pairingHistory[index].checked = !pairingHistory[index].checked;
+    localStorage.setItem('pairingHistory', JSON.stringify(pairingHistory));
+    updatePairingList();
+}
+
+function toggleSelectAll() {
+    const allChecked = pairingHistory.every(p => p.checked);
+    pairingHistory.forEach(p => p.checked = !allChecked);
+    localStorage.setItem('pairingHistory', JSON.stringify(pairingHistory));
+    updatePairingList();
+}
+
+function removePairing(index) {
+    pairingHistory.splice(index, 1);
+    localStorage.setItem('pairingHistory', JSON.stringify(pairingHistory));
+    updatePairingList();
+}
+
+function clearPairingList() {
+    pairingHistory = [];
+    localStorage.removeItem('pairingHistory');
+    updatePairingList();
+}
+
+function clearInputs() {
+    document.getElementById('captainInput').value = '';
+    document.getElementById('firstOfficerInput').value = '';
+    document.getElementById('cabinCrewInput').value = '';
+}
+
+function sendSMS() {
+    const selected = pairingHistory.filter(p => p.checked);
+    if(selected.length === 0) {
+        alert("Please select pairings to send SMS");
+        return;
+    }
+
+    const formattedDate = getFormattedDate();
+    const smsBody = encodeURIComponent(
+        `[${formattedDate}] Pairing(s) Approval Needed:\n\n` +
+        selected.map(p => 
+            `C: ${p.captain.code} (${p.captain.seniority})\n` +
+            `FO: ${p.firstOfficer.code} (${p.firstOfficer.seniority})\n` +
+            `CC: ${p.cabinCrew.code} (${p.cabinCrew.seniority})`
+        ).join('\n\n')
+    );
+
+    window.location.href = `sms:?body=${smsBody}`;
+}
+
+function sendEmail() {
+    const selected = pairingHistory.filter(p => p.checked);
+    if(selected.length === 0) {
+        alert("Please select pairings to email");
+        return;
+    }
+
+    const formattedDate = getFormattedDate();
+    const body = encodeURIComponent(
+        `Dear CCC,
+        
+As discussed kindly Please approve the below Crew pairing request for - ${formattedDate}\n\n` +
+        selected.map(p => 
+            `C: ${p.captain.code} (${p.captain.seniority})\n` +
+            `FO: ${p.firstOfficer.code} (${p.firstOfficer.seniority})\n` +
+            `CA: ${p.cabinCrew.code} (${p.cabinCrew.seniority})\n`
+        ).join('\n') +
+        `\nRegards,\n`
+    );
+
+    window.location.href = `mailto:Wajeeh.Abdul@transmaldivian.com?subject=Crew pairing request for ${formattedDate}&body=${body}`;
+}
+
+function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const formattedDate = getFormattedDate();
+    
+    doc.setFontSize(16);
+    doc.text(`Crew Pairing List - ${formattedDate}`, 10, 10);
+    doc.setFontSize(12);
+
+    pairingHistory.forEach((pairing, index) => {
+        const y = 20 + (index * 20);
+        doc.text(`C: ${pairing.captain.code} (${pairing.captain.seniority})`, 10, y);
+        doc.text(`FO: ${pairing.firstOfficer.code} (${pairing.firstOfficer.seniority})`, 10, y + 5);
+        doc.text(`CC: ${pairing.cabinCrew.code} (${pairing.cabinCrew.seniority})`, 10, y + 10);
+    });
+
+    doc.save(`crew_pairings_${formattedDate.replace(/ /g, '_')}.pdf`);
+}
+
+function getFormattedDate() {
+    const today = new Date();
+    return `${today.getDate()}${getOrdinal(today.getDate())} ${today.toLocaleString('default', { month: 'long' })} ${today.getFullYear()}`;
+}
+
+function getOrdinal(n) {
+    return n > 3 ? 'th' : ['th', 'st', 'nd', 'rd'][n];
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadCrewData();
+    updatePairingList();
+});
 </script>
 </body>
 </html>
