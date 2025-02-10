@@ -478,16 +478,17 @@ function sendSMS() {
 
 function sendEmail() {
     const selected = pairingHistory.filter(p => p.checked);
-    if(selected.length === 0) {
+    if (selected.length === 0) {
         alert("Please select pairings to email");
         return;
     }
 
     const formattedDate = getFormattedDate();
+    const ccEmails = "FOADMIN@transmaldivian.com,Dispatch@transmaldivian.com,Afraasheem.Kamal@transmaldivian.com,Usairam.Mohamed@transmaldivian.com";
+
     const body = encodeURIComponent(
-        `Dear CCC,
-        
-As discussed kindly Please approve the below Crew pairing request for - ${formattedDate}\n\n` +
+        `Dear CCC,\n\n` +
+        `As discussed kindly Please approve the below Crew pairing request for - ${formattedDate}\n\n` +
         selected.map(p => 
             `C: ${p.captain.code} (${p.captain.seniority})\n` +
             `FO: ${p.firstOfficer.code} (${p.firstOfficer.seniority})\n` +
@@ -496,8 +497,9 @@ As discussed kindly Please approve the below Crew pairing request for - ${format
         `\nRegards,\n`
     );
 
-    window.location.href = `mailto:Wajeeh.Abdul@transmaldivian.com?subject=Crew pairing request for ${formattedDate}&body=${body}`;
+    window.location.href = `mailto:Wajeeh.Abdul@transmaldivian.com?subject=Crew pairing request for ${formattedDate}&cc=${ccEmails}&body=${body}`;
 }
+
 
 function exportPDF() {
     const { jsPDF } = window.jspdf;
